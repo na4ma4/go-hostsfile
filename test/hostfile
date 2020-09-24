@@ -1,0 +1,22 @@
+## multiple names
+127.1.1.1	multiname1 multiname2 multiname3.withdomain.org
+
+## comment on same line
+127.1.2.1	hostname1 # comment on same line
+
+## comment with no spacing on same line
+127.1.2.2	hostname2# comment on same line
+
+## normal entry
+127.0.0.1	localhost
+
+## entry with spaces instead of tabs
+127.0.0.2   localhostspaced
+
+## last entry with no newline
+127.0.0.3	localhostwithoutnewline
+
+# The following lines are desirable for IPv6 capable hosts
+::1     localhost ip6-localhost ip6-loopback
+ff02::1 ip6-allnodes
+ff02::2 ip6-allrouters
