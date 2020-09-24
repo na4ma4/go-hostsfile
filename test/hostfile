@@ -1,3 +1,8 @@
+# The following lines are desirable for IPv6 capable hosts
+::1     localhost ip6-localhost ip6-loopback
+ff02::1 ip6-allnodes
+ff02::2 ip6-allrouters
+
 ## multiple names
 127.1.1.1	multiname1 multiname2 multiname3.withdomain.org
 
@@ -15,8 +20,3 @@
 
 ## last entry with no newline
 127.0.0.3	localhostwithoutnewline
-
-# The following lines are desirable for IPv6 capable hosts
-::1     localhost ip6-localhost ip6-loopback
-ff02::1 ip6-allnodes
-ff02::2 ip6-allrouters

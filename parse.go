@@ -1,7 +1,9 @@
 package hostsfile
 
 import (
-	"io/ioutil"
+	"bytes"
+	"io"
+	"os"
 )
 
 const (
@@ -18,65 +20,74 @@ type CallbackFunc func(ipAddr, host string)
 // ParseHostsFile takes a host file path and a CallbackFunc and returns an error
 // if the file can not be opened.
 func ParseHostsFile(hostsFileName string, cb CallbackFunc) error {
-	bs, err := ioutil.ReadFile(hostsFileName)
+	f, err := os.Open(hostsFileName)
 	if err != nil {
 		return err
 	}
+	defer f.Close()
 
-	return ParseHosts(bs, cb)
+	return ParseHostsReader(f, cb)
 }
 
-// ParseHosts parses the bytes from a hosts file.
+// ParseHosts accepts a byte slice and sends all host/ip matches found to the CallbackFunc.
 func ParseHosts(hostsFile []byte, cb CallbackFunc) error {
-	lastpos := 0
-	ipAddr := ""
+	return ParseHostsReader(bytes.NewBuffer(hostsFile), cb)
+}
+
+// ParseHostsReader parses host entries from an io.Reader.
+func ParseHostsReader(r io.Reader, cb CallbackFunc) error {
+	c := make([]byte, 1)
+	buf := bytes.NewBuffer(nil)
+	ipAddr := bytes.NewBuffer(nil)
 	skipline := false
 
-	for i := range hostsFile {
-		switch hostsFile[i] {
+	for {
+		if _, err := r.Read(c); err != nil {
+			break
+		}
+
+		switch c[0] {
 		case byteNewLine, byteReturn:
-			if skipline {
-				skipline = false
-				lastpos = i + 1
-
-				continue
-			}
-
-			if ipAddr != "" && lastpos < i {
+			if !skipline && ipAddr.Len() > 0 && buf.Len() > 0 {
 				// ipAddr is set, process data before newline
-				cb(ipAddr, string(hostsFile[lastpos:i]))
+				cb(ipAddr.String(), buf.String())
 			}
 
-			ipAddr = ""
-			lastpos = i + 1
+			skipline = false
+
+			ipAddr.Reset()
+			buf.Reset()
 		case byteComment:
-			if skipline {
-				continue
-			} else if ipAddr != "" && lastpos < i {
+			if !skipline && ipAddr.Len() > 0 && buf.Len() > 0 {
 				// ipAddr is set, process data before newline
-				cb(ipAddr, string(hostsFile[lastpos:i]))
+				cb(ipAddr.String(), buf.String())
 			}
 
 			skipline = true
+
+			ipAddr.Reset()
+			buf.Reset()
 		case byteSpace, byteTab:
 			switch {
 			case skipline:
 				continue
-			case ipAddr == "":
+			case ipAddr.Len() == 0:
 				// ipAddr is not set, set the ipAddr to the data
-				ipAddr = string(hostsFile[lastpos:i])
-			case lastpos < i:
+				ipAddr.Write(buf.Bytes())
+			case buf.Len() > 0:
 				// if lastpos and i are equal, it's zero length data, probably a series of spaces
-				cb(ipAddr, string(hostsFile[lastpos:i]))
+				cb(ipAddr.String(), buf.String())
 			}
 
-			lastpos = i + 1
+			buf.Reset()
+		default:
+			buf.WriteByte(c[0])
 		}
 	}
 
-	if lastpos < len(hostsFile) && !skipline {
+	if buf.Len() > 0 && !skipline {
 		// Last line wasn't a comment, so process remaining data
-		cb(ipAddr, string(hostsFile[lastpos:]))
+		cb(ipAddr.String(), buf.String())
 	}
 
 	return nil
